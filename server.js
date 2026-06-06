@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const OpenAI = require('openai');
-const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 require('dotenv').config();
 
 const app = express();
