@@ -3,15 +3,16 @@ const express = require('express');
 const cors = require('cors');
 const Anthropic = require('@anthropic-ai/sdk');
 const OpenAI = require('openai');
+const { CHARACTER_PROMPTS, SCENARIO_PROMPTS, GLOBAL_STYLE } = require('./character-prompts');
 
-require('dotenv').config();
+const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const app = express();
 const port = process.env.PORT || 3001;
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-app.use(cors());
+app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json({ limit: '10mb' }));
 
 // Sistema base de TUNKI STUDIO
@@ -84,7 +85,7 @@ app.post('/api/chat', async (req, res) => {
     res.setHeader('Connection', 'keep-alive');
 
     const stream = await client.messages.stream({
-      model: 'claude-sonnet-4-5',
+      model: 'claude-sonnet-4-20250514',
       max_tokens: 8000,
       system: TUNKI_SYSTEM + deptContext,
       messages: messages.map(m => ({ role: m.role, content: m.content }))
@@ -142,26 +143,87 @@ app.post('/api/generate-suno-prompt', async (req, res) => {
   });
 });
 
-// Endpoint generación de imagen con DALL-E 3
+// Health check
+app.get('/health', (req, res) => res.json({ status: 'TUNKI STUDIO online', version: '1.0.0' }));
+
+app.listen(port, () => console.log(`🎬 TUNKI STUDIO Backend corriendo en puerto ${port}`));
+
+// ── IMAGEN CON IDENTIDAD VISUAL OFICIAL ──────────────────────────────────────
 app.post('/api/generate-image', async (req, res) => {
-  const { prompt } = req.body;
-  if (!prompt) return res.status(400).json({ error: 'prompt requerido' });
-
-  const tunkiPrompt = prompt + ', flat design 2D illustration, pastel colors, clean lines, children animation style, no shadows, friendly, ages 3-7, Tunki Tunes animated series';
-
+  const { prompt, character, scenario } = req.body;
+  if (!prompt && !character) return res.status(400).json({ error: 'prompt o character requerido' });
+  let finalPrompt = '';
+  if (character && CHARACTER_PROMPTS[character.toLowerCase()]) {
+    finalPrompt = CHARACTER_PROMPTS[character.toLowerCase()].base;
+    if (scenario && SCENARIO_PROMPTS[scenario]) finalPrompt += ', ' + SCENARIO_PROMPTS[scenario];
+    if (prompt) finalPrompt += ', ' + prompt;
+  } else {
+    finalPrompt = prompt || '';
+  }
+  finalPrompt += ', ' + GLOBAL_STYLE;
   try {
     const response = await openaiClient.images.generate({
-      model: 'gpt-image-1',
-      prompt: tunkiPrompt,
-      n: 1,
-      size: '1024x1024',
-      quality: 'auto',
+      model: 'dall-e-3', prompt: finalPrompt, n: 1, size: '1024x1024', quality: 'standard'
     });
-    res.json({ url: response.data[0].url, revised_prompt: response.data[0].revised_prompt });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-}); // Health check
-app.get('/health', (req, res) => res.json({ status: 'TUNKI STUDIO online', version: '1.0.0' }));
+    res.json({ url: response.data[0].url, revised_prompt: response.data[0].revised_prompt, original_prompt: finalPrompt });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/characters', (req, res) => {
+  res.json(Object.entries(CHARACTER_PROMPTS).map(([key, val]) => ({
+    id: key, name: val.name, emoji: val.emoji, colors: val.colors
+  })));
+});
+
+// ── SUPABASE PIPELINE ─────────────────────────────────────────────────────────
+async function supabaseFetch(method, path, body = null) {
+  const https = require('https');
+  const SURL = process.env.SUPABASE_URL;
+  const SKEY = process.env.SUPABASE_SECRET_KEY;
+  if (!SURL || !SKEY) throw new Error('Supabase no configurado');
+  const url = new URL(`${SURL}/rest/v1/${path}`);
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname + url.search,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SKEY,
+        'Authorization': `Bearer ${SKEY}`,
+        'Prefer': 'return=representation'
+      }
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(data); } });
+    });
+    req.on('error', reject);
+    if (body) req.write(JSON.stringify(body));
+    req.end();
+  });
+}
+
+// GET /api/pipeline — obtener estado de todos los episodios
+app.get('/api/pipeline', async (req, res) => {
+  try {
+    const data = await supabaseFetch('GET', 'pipeline?select=*&order=episode_id');
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/pipeline/:episodeId — actualizar fases de un episodio
+app.patch('/api/pipeline/:episodeId', async (req, res) => {
+  const { episodeId } = req.params;
+  const updates = { ...req.body, updated_at: new Date().toISOString() };
+  try {
+    const data = await supabaseFetch('PATCH', `pipeline?episode_id=eq.${episodeId}`, updates);
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Health check
+app.get('/health', (req, res) => res.json({ status: 'TUNKI STUDIO online', version: '2.0.0' }));
 
 app.listen(port, () => console.log(`🎬 TUNKI STUDIO Backend corriendo en puerto ${port}`));
