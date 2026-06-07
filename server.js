@@ -161,7 +161,7 @@ app.post('/api/generate-image', async (req, res) => {
   }
   finalPrompt += ', ' + GLOBAL_STYLE;
   try {
-    const response = await openaiClient.images.generate({
+    const OpenAI = require("openai"); const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY }); const response = await openaiClient.images.generate({
       model: 'dall-e-3', prompt: finalPrompt, n: 1, size: '1024x1024', quality: 'standard'
     });
     res.json({ url: response.data[0].url, revised_prompt: response.data[0].revised_prompt, original_prompt: finalPrompt });
