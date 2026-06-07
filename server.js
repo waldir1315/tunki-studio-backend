@@ -62,7 +62,7 @@ app.post('/api/chat', async (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    const client = new Anthropic({ apiKey: "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" }); const stream = await client.messages.stream({
+    const client = new Anthropic({ apiKey: "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" }); const stream = await client.messages.stream({
       model: 'claude-sonnet-4-5',
       max_tokens: 8000,
       system: TUNKI_SYSTEM + deptContext,
