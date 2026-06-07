@@ -62,7 +62,7 @@ app.post('/api/chat', async (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }); const stream = await client.messages.stream({
+    const client = new Anthropic({ apiKey: "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" }); const stream = await client.messages.stream({
       model: 'claude-sonnet-4-5',
       max_tokens: 8000,
       system: TUNKI_SYSTEM + deptContext,
