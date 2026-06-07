@@ -155,4 +155,4 @@ app.patch('/api/pipeline/:episodeId', async (req, res) => {
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'TUNKI STUDIO online', version: '2.0.0' }));
 
-app.listen(port, () => console.log(`🎬 TUNKI STUDIO Backend corriendo en puerto ${port}`));
+app.listen(port, "0.0.0.0", () => console.log(`🎬 TUNKI STUDIO Backend corriendo en puerto ${port}`));
