@@ -6,7 +6,7 @@ const { CHARACTER_PROMPTS, SCENARIO_PROMPTS, GLOBAL_STYLE } = require('./charact
 
 const app = express();
 const port = process.env.PORT || 3001;
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -62,7 +62,7 @@ app.post('/api/chat', async (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
-    const stream = await client.messages.stream({
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }); const stream = await client.messages.stream({
       model: 'claude-sonnet-4-5',
       max_tokens: 8000,
       system: TUNKI_SYSTEM + deptContext,
@@ -155,4 +155,4 @@ app.patch('/api/pipeline/:episodeId', async (req, res) => {
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'TUNKI STUDIO online', version: '2.0.0' }));
 
-app.listen(port, "0.0.0.0", () => console.log(`🎬 TUNKI STUDIO Backend corriendo en puerto ${port}`));
+app.listen(port, () => console.log(`🎬 TUNKI STUDIO Backend corriendo en puerto ${port}`));
