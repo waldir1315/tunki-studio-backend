@@ -5,7 +5,6 @@ const Anthropic = require('@anthropic-ai/sdk');
 const OpenAI = require('openai');
 const { CHARACTER_PROMPTS, SCENARIO_PROMPTS, GLOBAL_STYLE } = require('./character-prompts');
 
-const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const app = express();
 const port = process.env.PORT || 3001;
